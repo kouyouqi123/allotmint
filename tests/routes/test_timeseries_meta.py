@@ -109,6 +109,26 @@ def test_timeseries_meta_formats_with_scaling(fmt, monkeypatch):
         assert "3.0" in resp.text
 
 
+# ---- XSS regression tests ------------------------------------------------
+
+
+@pytest.mark.parametrize("ticker_val,exchange_val", [
+    ("<script>alert(1)</script>", "L"),
+    ('"><img src=x onerror=alert(1)>', "L"),
+    ("ABC", "<script>alert(1)</script>"),
+])
+def test_html_output_escapes_xss_payloads(ticker_val, exchange_val, monkeypatch):
+    df = _sample_df()
+    client = _client_with_df(monkeypatch, df)
+    resp = client.get(
+        "/timeseries/meta",
+        params={"ticker": ticker_val, "exchange": exchange_val, "format": "html"},
+    )
+    assert resp.status_code == 200
+    assert "<script>" not in resp.text
+    assert "<img" not in resp.text
+
+
 # ---- /timeseries/html route tests -----------------------------------------
 
 
